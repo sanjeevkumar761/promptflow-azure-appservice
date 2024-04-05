@@ -1,134 +1,44 @@
-# Basic standard flow
-A basic standard flow using custom python tool that calls Azure OpenAI with connection info stored in environment variables.
+# Pre-requisites
+1. You have Python installed
+2. You have installed prompt flow using pip  
+2. You have created Azure OpenAI Service and deployed relevant model(s)
+3. You have Docker installed
+4. You have created Azure Container Registry  
+5. You have Created Azure App Service  
+6. You have Azure CLI installed  
+7. You have an Entra ID user or service principal with relevant RBAC roles  
 
-Tools used in this flow：
-- `prompt` tool
-- custom `python` Tool
 
-Connections used in this flow:
-- None
+# Preparation  
+1. Create a .env file based on .env.example. Update the values for the environment variables.  
+2. Create a connection.yaml file based on connection-sample.yaml. Update the values for connection variables.  
+3. Run command "pip install -r requirements.txt"  
+4. Run command "pf connection create -f connection.yaml"  
 
-## Prerequisites
+# Flow testing
+Run command "pf flow test --flow .  # ". for current directory"   
 
-Install promptflow sdk and other dependencies:
-```bash
-pip install -r requirements.txt
-```
+# Prepare Docker image and upload to Azure Container Registry
+1. Run command "pf flow build --source . --output <your-output-dir> --format docker"  
+2. Go to <your-output-dir>  
+3. Copy connection.yaml from your source code to connections folder  
+4. Inside <your-output-dir>, run command "docker build ."
+5. Run command "az login" either with your Entra ID user or with service principal  
+6. Run command "az acr login --name <your Azure Container registry name>"
+7. Enable admin account for your Azure Container Registry "az acr update -n <your Azure Container registry name> --admin-enabled true"  
+8. Run command "docker login <your Azure Container registry name>.azurecr.io". Use your service principal client ID and secret as user and password for login  
+9. Run command "docker build . -t <your Azure Container registry name>.azureacr.io/<Name of your flow>"  
+10. Run command "docker push <your Azure Container registry name>.azurecr.io/<Name of your flow>"
+11. Start docker container for testing with the command "docker run -p 8080:8080 -e AZURE_OPENAI_API_KEY=<your AOAI API key> -e AZURE_OPENAI_API_BASE=https://<your AOAI deployment name>.openai.azure.com/ -e AZURE_OPENAI_API_TYPE=azure  <your Azure Container registry name>.azurecr.io/<Name of your flow>"
+12. Test docker container with command "curl http://localhost:8080/score --data '{"text":"hello world"}' -X POST  -H "Content-Type: application/json""
 
-## Run flow
-
-- Prepare your Azure Open AI resource follow this [instruction](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/how-to/create-resource?pivots=web-portal) and get your `api_key` if you don't have one.
-
-- Setup environment variables
-
-Ensure you have put your azure open ai endpoint key in [.env](.env) file. You can create one refer to this [example file](.env.example).
-
-```bash
-cat .env
-```
-
-- Test flow/node
-```bash
-# test with default input value in flow.dag.yaml
-pf flow test --flow .
-
-# test with flow inputs
-pf flow test --flow . --inputs text="Java Hello World!"
-
-# test node with inputs
-pf flow test --flow . --node llm --inputs prompt="Write a simple Hello World program that displays the greeting message."
-```
-
-- Create run with multiple lines data
-```bash
-# using environment from .env file (loaded in user code: hello.py)
-pf run create --flow . --data ./data.jsonl --column-mapping text='${data.text}' --stream
-```
-
-You can also skip providing `column-mapping` if provided data has same column name as the flow.
-Reference [here](https://aka.ms/pf/column-mapping) for default behavior when `column-mapping` not provided in CLI.
-
-- List and show run meta
-```bash
-# list created run
-pf run list
-
-# get a sample run name
-name=$(pf run list -r 10 | jq '.[] | select(.name | contains("basic_variant_0")) | .name'| head -n 1 | tr -d '"')
-
-# show specific run detail
-pf run show --name $name
-
-# show output
-pf run show-details --name $name
-
-# visualize run in browser
-pf run visualize --name $name
-```
-
-## Run flow with connection
-Storing connection info in .env with plaintext is not safe. We recommend to use `pf connection` to guard secrets like `api_key` from leak.
-
-- Show or create `open_ai_connection`
-```bash
-# create connection from `azure_openai.yml` file
-# Override keys with --set to avoid yaml file changes
-pf connection create --file ../../../connections/azure_openai.yml --set api_key=<your_api_key> api_base=<your_api_base>
-
-# check if connection exists
-pf connection show -n open_ai_connection
-```
-
-- Test using connection secret specified in environment variables
-**Note**: we used `'` to wrap value since it supports raw value without escape in powershell & bash. For windows command prompt, you may remove the `'` to avoid it become part of the value.
-
-```bash
-# test with default input value in flow.dag.yaml
-pf flow test --flow . --environment-variables AZURE_OPENAI_API_KEY='${open_ai_connection.api_key}' AZURE_OPENAI_API_BASE='${open_ai_connection.api_base}'
-```
-
-- Create run using connection secret binding specified in environment variables, see [run.yml](run.yml)
-```bash
-# create run
-pf run create --flow . --data ./data.jsonl --stream --environment-variables AZURE_OPENAI_API_KEY='${open_ai_connection.api_key}' AZURE_OPENAI_API_BASE='${open_ai_connection.api_base}' --column-mapping text='${data.text}'
-# create run using yaml file
-pf run create --file run.yml --stream
-
-# show outputs
-name=$(pf run list -r 10 | jq '.[] | select(.name | contains("basic_variant_0")) | .name'| head -n 1 | tr -d '"')
-pf run show-details --name $name
-```
-
-## Run flow in cloud with connection
-- Assume we already have a connection named `open_ai_connection` in workspace.
-```bash
-# set default workspace
-az account set -s <your_subscription_id>
-az configure --defaults group=<your_resource_group_name> workspace=<your_workspace_name>
-```
-
-- Create run
-```bash
-# run with environment variable reference connection in azureml workspace
-pfazure run create --flow . --data ./data.jsonl --environment-variables AZURE_OPENAI_API_KEY='${open_ai_connection.api_key}' AZURE_OPENAI_API_BASE='${open_ai_connection.api_base}' --column-mapping text='${data.text}' --stream
-# run using yaml file
-pfazure run create --file run.yml --stream
-```
-
-- List and show run meta
-```bash
-# list created run
-pfazure run list -r 3
-
-# get a sample run name
-name=$(pfazure run list -r 100 | jq '.[] | select(.name | contains("basic_variant_0")) | .name'| head -n 1 | tr -d '"')
-
-# show specific run detail
-pfazure run show --name $name
-
-# show output
-pfazure run show-details --name $name
-
-# visualize run in browser
-pfazure run visualize --name $name
-```
+# Deploy docker image to Azure App Service Web App
+1. Login to Azure portal and create a resource of type Web App  
+2. Give Web App a name
+3. In "Publish" field, select "Container"  
+4. Select "Linux" and select Azure region for subsequent fields  
+5. Select pricing plan and other values  
+6. Change the tab to "Conatiner", select "Image Source" as "Azure Container Service", select "Single Container"  
+7. Select your Azure Container Registry, Image and Tag  
+8. Create / Deploy the web app  
+9. Test prompt flow API using this command -> curl https://<your web app name>.azurewebsites.net/score --data '{"text":"hello world"}' -X POST  -H "Content-Type: application/json"
