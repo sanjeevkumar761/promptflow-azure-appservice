@@ -22,7 +22,7 @@ Run command "pf flow test --flow .  # ". for current directory".
 
 # Prepare Docker image and upload to Azure Container Registry
 1. Run command "pf flow build --source . --output <your-output-dir> --format docker"  
-2. Go to <your-output-dir>  
+2. Change directory to <your-output-dir>   
 3. Copy connection.yaml from your source code to connections folder  
 4. Inside <your-output-dir>, run command "docker build ."
 5. Run command "az login" either with your Entra ID user or with service principal  
