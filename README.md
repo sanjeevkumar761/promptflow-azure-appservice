@@ -12,7 +12,7 @@
 
 
 # Preparation  
-1. Create a .env file based on .env.example. Update the values for the environment variables.  
+1. Clone this repo and create a .env file based on .env.example. Update the values for the environment variables.  
 2. Create a connection.yaml file based on connection-sample.yaml. Update the values for connection variables.  
 3. Run command ```pip install -r requirements.txt```  
 4. Run command ```pf connection create -f connection.yaml```.  
