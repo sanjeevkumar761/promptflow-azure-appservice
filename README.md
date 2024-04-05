@@ -1,3 +1,5 @@
+# Deploy Prompt Flow as a Web App to Azure App Service
+
 # Pre-requisites
 1. You have Python installed
 2. You have installed prompt flow using pip  
@@ -6,17 +8,17 @@
 4. You have created Azure Container Registry  
 5. You have Created Azure App Service  
 6. You have Azure CLI installed  
-7. You have an Entra ID user or service principal with relevant RBAC roles  
+7. You have an Entra ID user or service principal with relevant RBAC roles.  
 
 
 # Preparation  
 1. Create a .env file based on .env.example. Update the values for the environment variables.  
 2. Create a connection.yaml file based on connection-sample.yaml. Update the values for connection variables.  
 3. Run command "pip install -r requirements.txt"  
-4. Run command "pf connection create -f connection.yaml"  
+4. Run command "pf connection create -f connection.yaml".  
 
 # Flow testing
-Run command "pf flow test --flow .  # ". for current directory"   
+Run command "pf flow test --flow .  # ". for current directory".   
 
 # Prepare Docker image and upload to Azure Container Registry
 1. Run command "pf flow build --source . --output <your-output-dir> --format docker"  
